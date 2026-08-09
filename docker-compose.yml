@@ -1,0 +1,21 @@
+services:
+  postgres:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: POSTGRES_USER
+      POSTGRES_DB: ticket_system
+    ports:
+      - '5434:5432'
+    volumes:
+      - postgres_data:/var/lib/posgresql/data
+
+  redis:
+    image: redis:7
+    restart: unless-stopped
+    ports:
+      - '6380:6379'
+
+volumes:
+  postgres_data:
