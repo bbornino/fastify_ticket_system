@@ -1,4 +1,4 @@
-import { FastifyInstance } from "fastify"
+import type { FastifyInstance } from "fastify"
 import bcrypt from 'bcrypt'
 import { db , users } from '@fastify-ticket-system/db'
 import { registerSchema } from "./schema-user"

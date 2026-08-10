@@ -1,4 +1,4 @@
-import { FastifyInstance } from "fastify"
+import type { FastifyInstance } from "fastify"
 import { eq } from 'drizzle-orm'
 import { db, users } from '@fastify-ticket-system/db'
 
