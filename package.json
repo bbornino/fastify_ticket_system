@@ -2,7 +2,10 @@
   "name": "@fastify-ticket-system/source",
   "version": "0.0.0",
   "license": "MIT",
-  "scripts": {},
+  "scripts": {
+    "health": "node -e \"fetch('http://localhost:3000/health').then(r=>r.json()).then(d=>console.log(d)).catch(()=>{console.error('❌ API not reachable'); process.exit(1)})\"",
+    "db:ping": "tsx --env-file=.env packages/db/src/scripts/ping.ts"
+  },
   "private": true,
   "devDependencies": {
     "@eslint/js": "^9.8.0",
@@ -27,6 +30,7 @@
     "nx": "23.1.1",
     "prettier": "~3.6.2",
     "tslib": "^2.3.0",
+    "tsx": "^4.23.11",
     "typescript": "~6.0.3",
     "typescript-eslint": "^8.58.0",
     "vite": "^8.0.0",
