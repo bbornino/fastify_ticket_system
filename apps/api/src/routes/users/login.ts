@@ -26,7 +26,7 @@ export default async function ( fastify: FastifyInstance) {
 
         const token = fastify.jwt.sign(
             {userId: user.id, role: user.role },
-            { expiresIn: '1h'}
+            { expiresIn: '1d'}
         )
 
         return reply.send({ token })
