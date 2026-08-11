@@ -1,96 +1,108 @@
-# FastifyTicketSystem
+# Fastify Ticket System
 
-<a alt="Nx logo" href="https://nx.dev" target="_blank" rel="noreferrer"><img src="https://raw.githubusercontent.com/nrwl/nx/master/images/nx-logo.png" width="45"></a>
+A support ticketing API built with Fastify, Drizzle ORM, and PostgreSQL, inside an NX monorepo. This is TypeScript learning project #4 of 9, and the first app in the Fastify block — it focuses on backend fundamentals only, with no frontend.
 
-✨ Your new, shiny [Nx workspace](https://nx.dev) is ready ✨.
+## Tech Stack
 
-[Learn more about this workspace setup and its capabilities](https://nx.dev/getting-started/intro#learn-nx?utm_source=nx_project&amp;utm_medium=readme&amp;utm_campaign=nx_projects) or run `npx nx graph` to visually explore what was created. Now, let's get you up to speed!
+- **Framework:** Fastify 5
+- **Monorepo:** NX
+- **Language:** TypeScript
+- **ORM:** Drizzle ORM (pinned to `1.0.0-beta.20`)
+- **Database:** PostgreSQL 16 (Docker)
+- **Cache/queue (provisioned, not yet used):** Redis 7 (Docker)
+- **Auth:** JWT via `@fastify/jwt`, bcrypt password hashing
+- **Validation:** Fastify's native JSON Schema validation
+- **Testing:** Vitest, using Fastify's built-in `.inject()` for HTTP-level tests
+- **Package manager:** pnpm
 
-## Run tasks
+## Project Structure
 
-To run tasks with Nx use:
-
-```sh
-npx nx <target> <project-name>
+```
+fastify_ticket_system/
+├── apps/
+│   └── api/
+│       └── src/
+│           ├── app/
+│           │   ├── app.ts
+│           │   └── plugins/       # sensible, jwt, auth (requireAuth decorator)
+│           └── routes/
+│               ├── root.ts        # /health
+│               ├── users/         # register, login, /me
+│               └── tickets/       # CRUD + comments
+├── packages/
+│   └── db/
+│       └── src/
+│           ├── lib/
+│           │   ├── schema.ts      # Drizzle table definitions
+│           │   ├── db.ts          # Drizzle client
+│           │   └── relations.ts   # table relations
+│           └── scripts/
+│               └── ping.ts        # standalone DB connectivity check
+└── docker-compose.yml            # Postgres (5438) + Redis (6380)
 ```
 
-For example:
+Routes are grouped by domain (`routes/users/`, `routes/tickets/`) rather than split into separate routes/services/repositories layers, matching Playful Programming's actual production structure. Shared database code lives in `packages/db`, its own NX library, so it can be consumed by both `apps/api` and a future `apps/worker` (planned for F3) without either app reaching into the other's internals.
 
-```sh
-npx nx build myproject
+## Setup
+
+1. Install Node 24 (via nvm-windows or your version manager of choice) and enable pnpm.
+2. Install dependencies:
+   ```
+   pnpm install
+   ```
+3. Copy `.env.example` to `.env` — the default values match the Docker Compose setup below and need no changes for local development.
+4. Start Postgres and Redis:
+   ```
+   docker compose up -d
+   ```
+5. Push the schema to the database:
+   ```
+   pnpm exec drizzle-kit push
+   ```
+6. Confirm the database is reachable:
+   ```
+   pnpm db:ping
+   ```
+7. Start the API:
+   ```
+   pnpm exec nx serve api
+   ```
+8. Confirm the server is up:
+   ```
+   pnpm health
+   ```
+
+The API runs at `http://localhost:3000`.
+
+## Features Implemented
+
+**Authentication**
+- User registration with bcrypt password hashing
+- Login with JWT issuance (24-hour expiry)
+- `requireAuth` decorator protecting routes via Fastify's plugin/hook system
+- `GET /users/me` — returns the current authenticated user
+
+**Ticketing**
+- `POST /tickets` — create a ticket
+- `GET /tickets` — list tickets, with optional `status`/`priority` filtering
+- `GET /tickets/:id` — get a single ticket
+- `PATCH /tickets/:id` — update status, priority, or agent assignment
+- `POST /tickets/:id/comments` — add a comment, author taken from the authenticated user's token, never from the request body
+- `GET /tickets/:id/comments` — list a ticket's comments
+
+**Data model**
+
+Three tables — `users`, `tickets`, `ticket_comments` — with two Postgres enum types (`ticket_status`, `ticket_priority`) shared between the database schema and Fastify's request validation.
+
+## Running Tests
+
+```
+pnpm exec nx test api
 ```
 
-These targets are either [inferred automatically](https://nx.dev/concepts/inferred-tasks?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) or defined in the `project.json` or `package.json` files.
+23 tests across 6 files, covering both success and failure paths (invalid input, missing auth, nonexistent resources) for every route. Tests use Fastify's `.inject()` against a real, disposable app instance per test file, and run against the actual Postgres database rather than a mock — test data is created with distinctive identifiers and cleaned up in `afterAll` hooks.
 
-[More about running tasks in the docs &raquo;](https://nx.dev/features/run-tasks?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
+## Known Limitations
 
-## Add new projects
-
-While you could add new projects to your workspace manually, you might want to leverage [Nx plugins](https://nx.dev/concepts/nx-plugins?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) and their [code generation](https://nx.dev/features/generate-code?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) feature.
-
-To install a new plugin you can use the `nx add` command. Here's an example of adding the React plugin:
-```sh
-npx nx add @nx/react
-```
-
-Use the plugin's generator to create new projects. For example, to create a new React app or library:
-
-```sh
-# Generate an app
-npx nx g @nx/react:app demo
-
-# Generate a library
-npx nx g @nx/react:lib some-lib
-```
-
-You can use `npx nx list` to get a list of installed plugins. Then, run `npx nx list <plugin-name>` to learn about more specific capabilities of a particular plugin. Alternatively, [install Nx Console](https://nx.dev/getting-started/editor-setup?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) to browse plugins and generators in your IDE.
-
-[Learn more about Nx plugins &raquo;](https://nx.dev/concepts/nx-plugins?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) | [Browse the plugin registry &raquo;](https://nx.dev/plugin-registry?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-
-## Set up CI!
-
-### Step 1
-
-To connect to Nx Cloud, run the following command:
-
-```sh
-npx nx connect
-```
-
-Connecting to Nx Cloud ensures a [fast and scalable CI](https://nx.dev/ci/intro/why-nx-cloud?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) pipeline. It includes features such as:
-
-- [Remote caching](https://nx.dev/ci/features/remote-cache?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-- [Task distribution across multiple machines](https://nx.dev/ci/features/distribute-task-execution?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-- [Automated e2e test splitting](https://nx.dev/ci/features/split-e2e-tasks?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-- [Task flakiness detection and rerunning](https://nx.dev/ci/features/flaky-tasks?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-
-### Step 2
-
-Use the following command to configure a CI workflow for your workspace:
-
-```sh
-npx nx g ci-workflow
-```
-
-[Learn more about Nx on CI](https://nx.dev/ci/intro/ci-with-nx#ready-get-started-with-your-provider?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-
-## Install Nx Console
-
-Nx Console is an editor extension that enriches your developer experience. It lets you run tasks, generate code, and improves code autocompletion in your IDE. It is available for VSCode and IntelliJ.
-
-[Install Nx Console &raquo;](https://nx.dev/getting-started/editor-setup?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-
-## Useful links
-
-Learn more:
-
-- [Learn more about this workspace setup](https://nx.dev/getting-started/intro#learn-nx?utm_source=nx_project&amp;utm_medium=readme&amp;utm_campaign=nx_projects)
-- [Learn about Nx on CI](https://nx.dev/ci/intro/ci-with-nx?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-- [Releasing Packages with Nx release](https://nx.dev/features/manage-releases?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-- [What are Nx plugins?](https://nx.dev/concepts/nx-plugins?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-
-And join the Nx community:
-- [Discord](https://go.nx.dev/community)
-- [Follow us on X](https://twitter.com/nxdevtools) or [LinkedIn](https://www.linkedin.com/company/nrwl)
-- [Our Youtube channel](https://www.youtube.com/@nxdevtools)
-- [Our blog](https://nx.dev/blog?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
+- **JWT refresh tokens are not implemented.** Access tokens are long-lived (24 hours) for development convenience. A production system would pair short-lived access tokens with a proper refresh-token flow; this was scoped out of F1 deliberately, as a documented decision rather than an oversight.
+- **No frontend.** F1 is a backend-only app by design — the Fastify block's frontend work begins in F2.
